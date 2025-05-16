@@ -18,7 +18,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-key-for-testing')
 
 # Configure database
-database_url = os.getenv('DATABASE_URL')
+database_url = os.getenv('NEON_DATABASE_URL')
 if database_url and database_url.startswith("postgres://"):
     database_url = database_url.replace("postgres://", "postgresql://", 1)
 
@@ -31,6 +31,8 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 # Initialize extensions
 db.init_app(app)
+with app.app_context():
+    db.create_all()
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
 # Initialize Flask-Login
@@ -41,11 +43,6 @@ login_manager.login_view = 'login'
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(user_id)
-
-# Create database tables
-@app.before_first_request
-def create_tables():
-    db.create_all()
 
 # Routes
 @app.route('/')
