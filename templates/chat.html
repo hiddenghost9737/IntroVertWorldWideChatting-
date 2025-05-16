@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+
+{% block title %}Chat - IntrovertChat{% endblock %}
+
+{% block extra_head %}
+<style>
+    .chat-container {
+        height: calc(100vh - 4rem - 1px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="chat-container flex bg-gray-950">
+    <!-- Sidebar -->
+    <div class="w-80 border-r border-gray-800 flex flex-col h-full bg-gray-900">
+        <div class="p-4 border-b border-gray-800 flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <div class="relative">
+                    <img src="{{ current_user.avatar_url or url_for('static', filename='default-avatar.png') }}" alt="{{ current_user.display_name or current_user.username }}" class="h-8 w-8 rounded-full object-cover">
+                </div>
+                <span class="font-medium truncate">{{ current_user.display_name or current_user.username }}</span>
+            </div>
+        </div>
+
+        <div class="p-3 border-b border-gray-800">
+            <form action="{{ url_for('search_users') }}" method="post" class="relative">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <i class="fas fa-search absolute left-2.5 top-2.5 text-gray-500"></i>
+                <input type="text" name="search_query" placeholder="Search users..." class="w-full pl-9 pr-9 py-2 bg-gray-800 border border-gray-700 rounded text-gray-100">
+                <button type="submit" class="absolute right-2.5 top-2.5 text-gray-500 hover:text-gray-400">
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+            </form>
+        </div>
+
+        <div class="flex-1 overflow-y-auto">
+            <div class="p-2 bg-gray-800 text-sm font-medium text-gray-400">Recent Chats</div>
+            <ul class="divide-y divide-gray-800">
+                {% if recent_chats %}
+                    {% for user, last_message_time in recent_chats %}
+                        <li>
+                            <a href="{{ url_for('chat_with_user', user_id=user.id) }}" class="w-full flex items-center p-3 hover:bg-gray-800 transition-colors">
+                                <div class="relative">
+                                    <img src="{{ user.avatar_url or url_for('static', filename='default-avatar.png') }}" alt="{{ user.display_name or user.username }}" class="h-10 w-10 rounded-full object-cover">
+                                    <div class="online-indicator {{ 'online' if status_dict.get(user.id) and status_dict[user.id].is_online else 'offline' }}"></div>
+                                </div>
+                                <div class="ml-3 text-left overflow-hidden">
+                                    <div class="font-medium truncate">{{ user.display_name or user.username }}</div>
+                                    <div class="text-xs text-gray-400 truncate">@{{ user.username }}</div>
+                                </div>
+                            </a>
+                        </li>
+                    {% endfor %}
+                {% else %}
+                    <li class="flex flex-col items-center justify-center h-40 p-4 text-center text-gray-500">
+                        <i class="fas fa-comments text-2xl mb-2 opacity-50"></i>
+                        <p>No recent chats</p>
+                        <p class="text-xs mt-1">Search for users to start chatting</p>
+                    </li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+
+    <!-- Main chat area -->
+    <div class="flex-1 flex flex-col" id="chat-area">
+        <div class="flex flex-col items-center justify-center h-full p-4 text-center">
+            <h2 class="text-2xl font-semibold text-gray-300 mb-2">Welcome to IntrovertChat</h2>
+            <p class="text-gray-400 max-w-md">
+                Select a user from the sidebar to start chatting or search for new connections.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const socket = io();
+        
+        socket.on('connect', function() {
+            console.log('Connected to server');
+        });
+        
+        socket.on('status_change', function(data) {
+            const userId = data.user_id;
+            const isOnline = data.is_online;
+            
+            // Update status indicators
+            document.querySelectorAll(`[data-user-id="${userId}"] .online-indicator`).forEach(indicator => {
+                indicator.classList.toggle('online', isOnline);
+                indicator.classList.toggle('offline', !isOnline);
+            });
+        });
+        
+        socket.on('new_message', function(data) {
+            // If we're currently chatting with this user, add the message to the chat
+            const currentChatId = document.querySelector('#chat-messages')?.dataset.userId;
+            if (currentChatId === data.sender_id) {
+                addMessageToChat(data, false);
+                
+                // Mark as read
+                fetch('/api/mark_read', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': '{{ csrf_token() }}'
+                    },
+                    body: `message_id=${data.id}`
+                });
+            }
+        });
+        
+        // Function to add a message to the chat
+        function addMessageToChat(message, isSender) {
+            const chatMessages = document.getElementById('chat-messages');
+            if (!chatMessages) return;
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `flex ${isSender ? 'justify-end' : 'justify-start'} mb-4`;
+            
+            const bubbleClass = isSender ? 
+                'message-bubble message-bubble-sender rounded-lg px-4 py-2 mr-2' : 
+                'message-bubble message-bubble-receiver rounded-lg px-4 py-2';
+            
+            const timeFormatted = new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            if (!isSender) {
+                const avatar = document.createElement('div');
+                avatar.className = 'mr-2';
+                avatar.innerHTML = `
+                    <img src="${message.sender.avatar_url || '/static/default-avatar.png'}" 
+                         alt="${message.sender.display_name || message.sender.username}" 
+                         class="h-8 w-8 rounded-full object-cover">
+                `;
+                messageDiv.appendChild(avatar);
+            }
+            
+            const content = document.createElement('div');
+            content.className = bubbleClass;
+            content.innerHTML = `
+                <div>${message.content}</div>
+                <div class="text-xs mt-1 ${isSender ? 'text-blue-200' : 'text-gray-400'}">${timeFormatted}</div>
+            `;
+            messageDiv.appendChild(content);
+            
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="flex min-h-screen flex-col bg-gray-950 text-gray-100">
+    <header class="border-b border-gray-800 bg-gray-950/95 backdrop-blur">
+        <div class="container mx-auto flex h-16 items-center justify-between px-4">
+            <span class="text-2xl font-bold bg-gradient-to-r from-purple-500 to-blue-500 text-transparent bg-clip-text">IntrovertChat</span>
+            <div class="flex items-center space-x-4">
+                <a href="{{ url_for('login') }}" class="text-gray-300 hover:text-white px-4 py-2">
+                    Login
+                </a>
+                <a href="{{ url_for('register') }}" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded">
+                    Sign Up
+                </a>
+            </div>
+        </div>
+    </header>
+    
+    <section class="py-20 md:py-32">
+        <div class="container mx-auto px-4 md:px-6">
+            <div class="grid gap-6 lg:grid-cols-2 lg:gap-12 items-center">
+                <div class="space-y-4">
+                    <h1 class="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl bg-gradient-to-r from-purple-500 to-blue-500 text-transparent bg-clip-text">
+                        Chat Your Way, On Your Terms
+                    </h1>
+                    <p class="max-w-[600px] text-gray-400 md:text-xl">
+                        IntrovertChat is designed for those who prefer meaningful conversations without the social pressure.
+                        Connect with others at your own pace, in your own space.
+                    </p>
+                    <div class="flex flex-col gap-2 min-[400px]:flex-row">
+                        <a href="{{ url_for('register') }}" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-center">
+                            Get Started
+                        </a>
+                        <a href="#features" class="border border-gray-700 text-gray-300 hover:text-white px-4 py-2 rounded text-center">
+                            Learn More
+                        </a>
+                    </div>
+                </div>
+                <div class="mx-auto lg:mr-0 lg:ml-auto">
+                    <div class="relative">
+                        <div class="absolute inset-0 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg blur-xl opacity-50"></div>
+                        <div class="relative bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+                            <div class="p-4 border-b border-gray-800 flex items-center">
+                                <div class="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
+                                <div class="w-3 h-3 rounded-full bg-yellow-500 mr-2"></div>
+                                <div class="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
+                                <div class="ml-2 text-sm text-gray-400">IntrovertChat</div>
+                            </div>
+                            <div class="p-6 space-y-4">
+                                <div class="flex items-start space-x-3">
+                                    <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs">
+                                        JD
+                                    </div>
+                                    <div class="bg-gray-800 rounded-lg p-3 text-sm">
+                                        <p>Hey there! How's your day going?</p>
+                                        <p class="text-xs text-gray-500 mt-1">10:42 AM</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-start justify-end space-x-3">
+                                    <div class="bg-blue-600 rounded-lg p-3 text-sm text-white">
+                                        <p>Pretty good! Working on a new project. You?</p>
+                                        <p class="text-xs text-blue-300 mt-1">10:45 AM</p>
+                                    </div>
+                                    <div class="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-white text-xs">
+                                        ME
+                                    </div>
+                                </div>
+                                <div class="flex items-start space-x-3">
+                                    <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs">
+                                        JD
+                                    </div>
+                                    <div class="bg-gray-800 rounded-lg p-3 text-sm">
+                                        <p>Just reading and enjoying some quiet time. Sometimes that's all we need. 📚</p>
+                                        <p class="text-xs text-gray-500 mt-1">10:48 AM</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <section id="features" class="py-12 md:py-24 bg-gray-900">
+        <div class="container mx-auto px-4 md:px-6">
+            <div class="flex flex-col items-center justify-center space-y-4 text-center">
+                <div class="space-y-2">
+                    <h2 class="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
+                        Features Designed for Introverts
+                    </h2>
+                    <p class="max-w-[900px] text-gray-400 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                        Our platform is built with your comfort in mind, providing tools that respect your social boundaries.
+                    </p>
+                </div>
+            </div>
+            <div class="mx-auto grid max-w-5xl grid-cols-1 gap-6 py-12 md:grid-cols-3">
+                <div class="flex flex-col items-center space-y-4 rounded-lg border border-gray-800 p-6 bg-gray-950">
+                    <div class="flex h-16 w-16 items-center justify-center rounded-full bg-blue-600/10">
+                        <i class="fas fa-bell text-2xl text-blue-600"></i>
+                    </div>
+                    <h3 class="text-xl font-bold">Quiet Mode</h3>
+                    <p class="text-gray-400 text-center">
+                        Control notifications and set boundaries for when you want to be contacted.
+                    </p>
+                </div>
+                <div class="flex flex-col items-center space-y-4 rounded-lg border border-gray-800 p-6 bg-gray-950">
+                    <div class="flex h-16 w-16 items-center justify-center rounded-full bg-blue-600/10">
+                        <i class="fas fa-check-circle text-2xl text-blue-600"></i>
+                    </div>
+                    <h3 class="text-xl font-bold">Real-time Status</h3>
+                    <p class="text-gray-400 text-center">
+                        See who's online without the pressure of immediate response.
+                    </p>
+                </div>
+                <div class="flex flex-col items-center space-y-4 rounded-lg border border-gray-800 p-6 bg-gray-950">
+                    <div class="flex h-16 w-16 items-center justify-center rounded-full bg-blue-600/10">
+                        <i class="fas fa-comment text-2xl text-blue-600"></i>
+                    </div>
+                    <h3 class="text-xl font-bold">Thoughtful Messaging</h3>
+                    <p class="text-gray-400 text-center">
+                        Take your time to craft messages without the pressure of "typing" indicators.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}

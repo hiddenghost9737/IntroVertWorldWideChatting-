@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+
+{% block title %}Search Results - IntrovertChat{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-2xl font-bold mb-6">Search Results</h1>
+    
+    <div class="mb-6">
+        <a href="{{ url_for('chat') }}" class="text-blue-400 hover:text-blue-300">
+            <i class="fas fa-arrow-left mr-2"></i> Back to Chat
+        </a>
+    </div>
+    
+    <div class="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+        {% if users %}
+            <ul class="divide-y divide-gray-800">
+                {% for user in users %}
+                    <li>
+                        <a href="{{ url_for('chat_with_user', user_id=user.id) }}" class="flex items-center p-4 hover:bg-gray-800 transition-colors">
+                            <div class="relative">
+                                <img src="{{ user.avatar_url or url_for('static', filename='default-avatar.png') }}" 
+                                     alt="{{ user.display_name or user.username }}" 
+                                     class="h-12 w-12 rounded-full object-cover">
+                                <div class="online-indicator {{ 'online' if status_dict.get(user.id) and status_dict[user.id].is_online else 'offline' }}"></div>
+                            </div>
+                            <div class="ml-4">
+                                <div class="font-medium">{{ user.display_name or user.username }}</div>
+                                <div class="text-sm text-gray-400">@{{ user.username }}</div>
+                                {% if user.bio %}
+                                    <div class="text-sm text-gray-400 mt-1 line-clamp-1">{{ user.bio }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="ml-auto">
+                                <button

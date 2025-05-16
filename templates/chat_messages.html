@@ -1,0 +1,177 @@
+{% extends 'chat.html' %}
+
+{% block title %}Chat with {{ other_user.display_name or other_user.username }} - IntrovertChat{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const chatMessages = document.getElementById('chat-messages');
+        const messageForm = document.getElementById('message-form');
+        const messageInput = document.getElementById('message-input');
+        
+        // Scroll to bottom of chat
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        
+        // Handle message submission
+        messageForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const content = messageInput.value.trim();
+            if (!content) return;
+            
+            fetch('/api/send_message', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                },
+                body: `receiver_id={{ other_user.id }}&content=${encodeURIComponent(content)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Add message to chat
+                    addMessageToChat(data.message, true);
+                    messageInput.value = '';
+                }
+            })
+            .catch(error => console.error('Error sending message:', error));
+        });
+        
+        // Function to add a message to the chat
+        function addMessageToChat(message, isSender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `flex ${isSender ? 'justify-end' : 'justify-start'} mb-4`;
+            
+            const bubbleClass = isSender ? 
+                'message-bubble message-bubble-sender rounded-lg px-4 py-2 mr-2' : 
+                'message-bubble message-bubble-receiver rounded-lg px-4 py-2';
+            
+            const timeFormatted = new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            if (!isSender) {
+                const avatar = document.createElement('div');
+                avatar.className = 'mr-2';
+                avatar.innerHTML = `
+                    <img src="{{ other_user.avatar_url or url_for('static', filename='default-avatar.png') }}" 
+                         alt="{{ other_user.display_name or other_user.username }}" 
+                         class="h-8 w-8 rounded-full object-cover">
+                `;
+                messageDiv.appendChild(avatar);
+            }
+            
+            const content = document.createElement('div');
+            content.className = bubbleClass;
+            content.innerHTML = `
+                <div>${message.content}</div>
+                <div class="text-xs mt-1 ${isSender ? 'text-blue-200' : 'text-gray-400'}">${timeFormatted}</div>
+            `;
+            messageDiv.appendChild(content);
+            
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        // Auto-resize textarea
+        messageInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+    });
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="chat-container flex bg-gray-950">
+    <!-- Sidebar (inherited from parent template) -->
+    {{ super() }}
+    
+    <!-- Main chat area -->
+    <div class="flex-1 flex flex-col" id="chat-area">
+        <!-- Chat header -->
+        <div class="h-16 border-b border-gray-800 flex items-center justify-between px-4 bg-gray-900">
+            <div class="flex items-center">
+                <div class="relative">
+                    <img src="{{ other_user.avatar_url or url_for('static', filename='default-avatar.png') }}" 
+                         alt="{{ other_user.display_name or other_user.username }}" 
+                         class="h-10 w-10 rounded-full object-cover">
+                    <div class="online-indicator {{ 'online' if user_status and user_status.is_online else 'offline' }}"></div>
+                </div>
+                <div class="ml-3">
+                    <div class="font-medium">{{ other_user.display_name or other_user.username }}</div>
+                    <div class="text-xs text-gray-400">@{{ other_user.username }}</div>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2">
+                <button class="text-gray-400 hover:text-gray-300 p-2">
+                    <i class="fas fa-phone"></i>
+                </button>
+                <button class="text-gray-400 hover:text-gray-300 p-2">
+                    <i class="fas fa-video"></i>
+                </button>
+                <button class="text-gray-400 hover:text-gray-300 p-2">
+                    <i class="fas fa-info-circle"></i>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Chat messages -->
+        <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-950" data-user-id="{{ other_user.id }}">
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="flex {% if message.sender_id == current_user.id %}justify-end{% else %}justify-start{% endif %} mb-4">
+                        {% if message.sender_id != current_user.id %}
+                            <div class="mr-2">
+                                <img src="{{ other_user.avatar_url or url_for('static', filename='default-avatar.png') }}" 
+                                     alt="{{ other_user.display_name or other_user.username }}" 
+                                     class="h-8 w-8 rounded-full object-cover">
+                            </div>
+                        {% endif %}
+                        <div class="{% if message.sender_id == current_user.id %}message-bubble message-bubble-sender rounded-lg px-4 py-2 mr-2{% else %}message-bubble message-bubble-receiver rounded-lg px-4 py-2{% endif %}">
+                            <div>{{ message.content }}</div>
+                            <div class="text-xs mt-1 {% if message.sender_id == current_user.id %}text-blue-200{% else %}text-gray-400{% endif %}">
+                                {{ message.created_at.strftime('%I:%M %p') }}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="flex flex-col items-center justify-center h-full text-center text-gray-500">
+                    <p>No messages yet</p>
+                    <p class="text-xs mt-1">Start the conversation by sending a message</p>
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- Message input -->
+        <div class="border-t border-gray-800 bg-gray-900 p-3">
+            <form id="message-form" class="flex items-end space-x-2">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="flex space-x-2">
+                    <button type="button" class="text-gray-400 hover:text-gray-300 p-2">
+                        <i class="fas fa-paperclip"></i>
+                    </button>
+                    <button type="button" class="text-gray-400 hover:text-gray-300 p-2">
+                        <i class="fas fa-image"></i>
+                    </button>
+                    <button type="button" class="text-gray-400 hover:text-gray-300 p-2">
+                        <i class="fas fa-microphone"></i>
+                    </button>
+                </div>
+                <div class="flex-1 relative">
+                    <textarea id="message-input" name="content" class="w-full rounded-lg bg-gray-800 border-gray-700 text-gray-100 p-3 pr-12 resize-none max-h-32 focus:outline-none focus:ring-1 focus:ring-blue-500" placeholder="Type a message..." rows="1"></textarea>
+                    <div class="absolute right-2 bottom-2">
+                        <button type="button" class="text-gray-400 hover:text-gray-300 p-2">
+                            <i class="fas fa-smile"></i>
+                        </button>
+                    </div>
+                </div>
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
