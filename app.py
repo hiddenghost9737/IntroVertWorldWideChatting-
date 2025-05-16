@@ -6,6 +6,9 @@ from werkzeug.utils import secure_filename
 from datetime import datetime
 import os
 from dotenv import load_dotenv
+import logging
+import sys
+from flask_session import Session
 
 from models import db, User, UserStatus, Message, UserFollow, MessageReaction, Notification
 from forms import LoginForm, RegistrationForm, ProfileForm, MessageForm
@@ -17,23 +20,61 @@ load_dotenv()
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-key-for-testing')
 
+# Update the Flask configuration to use a more robust session
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour in seconds
+app.config['SESSION_FILE_DIR'] = os.path.join(app.root_path, 'flask_session')
+app.config['SESSION_USE_SIGNER'] = True
+
+# Update the upload folder configuration
+app.config['UPLOAD_FOLDER'] = '/tmp/uploads' if os.environ.get('RENDER') else os.path.join(app.root_path, 'static/uploads')
+
+# Ensure upload directory exists with proper permissions
+try:
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    logger.info(f"Created upload directory: {app.config['UPLOAD_FOLDER']}")
+except Exception as e:
+    logger.error(f"Failed to create upload directory: {str(e)}")
+
+# Create session directory
+os.makedirs(app.config['SESSION_FILE_DIR'], exist_ok=True)
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+logger = logging.getLogger(__name__)
+
 # Configure database
-database_url = os.getenv('NEON_DATABASE_URL')
+database_url = os.getenv('NEON_DATABASE_URL') or os.getenv('NEON_DATABASE_URL') or os.getenv('POSTGRES_URL')
 if database_url and database_url.startswith("postgres://"):
     database_url = database_url.replace("postgres://", "postgresql://", 1)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url or 'sqlite:///introvertchat.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static/uploads')
-
-# Ensure upload directory exists
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_pre_ping': True,
+    'pool_recycle': 300,
+    'connect_args': {'connect_timeout': 10}
+}
 
 # Initialize extensions
 db.init_app(app)
+Session(app)
 with app.app_context():
     db.create_all()
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
+# Replace the SocketIO initialization with this:
+socketio = SocketIO(
+    app, 
+    cors_allowed_origins="*", 
+    async_mode='eventlet',
+    logger=True,
+    engineio_logger=True,
+    ping_timeout=60,
+    ping_interval=25
+)
 
 # Initialize Flask-Login
 login_manager = LoginManager()
@@ -43,6 +84,17 @@ login_manager.login_view = 'login'
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(user_id)
+
+# Error handlers
+@app.errorhandler(500)
+def handle_500_error(e):
+    logger.error(f"500 error: {str(e)}")
+    return render_template('error.html', error=str(e)), 500
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    logger.error(f"Unhandled exception: {str(e)}", exc_info=True)
+    return render_template('error.html', error="An unexpected error occurred."), 500
 
 # Routes
 @app.route('/')
@@ -230,10 +282,15 @@ def profile():
         current_user.bio = form.bio.data
         
         if form.avatar.data:
-            filename = secure_filename(f"{current_user.id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.jpg")
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            form.avatar.data.save(filepath)
-            current_user.avatar_url = f"/static/uploads/{filename}"
+            try:
+                filename = secure_filename(f"{current_user.id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.jpg")
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                form.avatar.data.save(filepath)
+                current_user.avatar_url = f"/static/uploads/{filename}"
+                logger.info(f"Saved avatar to {filepath}")
+            except Exception as e:
+                logger.error(f"Failed to save avatar: {str(e)}")
+                flash('Failed to upload avatar. Please try again.', 'danger')
         
         db.session.commit()
         flash('Profile updated successfully!', 'success')
